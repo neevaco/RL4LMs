@@ -16,6 +16,7 @@ from rl4lms.envs.text_generation.metric import (
     chrFmetric,
     IntentAccuracyDailyDialog,
 )
+from rl4lms.envs.text_generation.reward_model import load_t5_reward_model
 import numpy as np
 from typing import List, Dict, Any
 
@@ -605,6 +606,61 @@ class IntentAccuracy(BatchedRewardFunction):
         )["intent/accuracy"][0]
         rewards[done_ixs] += self._intent_coeff * np.array(scores)
         return rewards.tolist()
+
+
+class EOARewardFunction(RewardFunction):
+    def __init__(self, model_name: str, base_name: str, device: str) -> None:
+        super().__init__()
+        self._device = device
+        self._model = load_t5_reward_model(model_name, base_name).to(self._device)
+        self._tokenizer = AutoTokenizer.from_pretrained(base_name)
+
+    def __call__(
+        self,
+        current_observation: Observation,
+        action: int,
+        next_observation: Observation,
+        done: bool,
+        meta_info: Dict[str, Any] = None,
+    ) -> float:
+        # we only provide a reward at the end of a generation sequence
+        if not done:
+            return 0
+
+        # next_observation.prompt_or_input_text is the prompt
+        # (query+sources) given to the encoder
+        encoder_inputs = self._tokenizer(
+            [next_observation.prompt_or_input_text],
+            padding="longest",
+            truncation=True,
+            return_tensors="pt"
+        )
+
+        # next_observation.context_text is the generated response
+        # it is given to the decoder
+        decoder_inputs = self._tokenizer(
+            [next_observation.context_text],
+            padding="longest",
+            truncation=True,
+            return_tensors="pt"
+        )
+
+        print("############################")
+        print(encoder_inputs)
+        print("---------------------")
+        print(decoder_inputs)
+        print("---------------------")
+
+        # chosen_scores: (1,)
+        outputs = self._model(
+            input_ids=encoder_inputs["input_ids"].to(self._device),
+            attention_mask=encoder_inputs["attention_mask"].to(self._device),
+            chosen_decoder_input_ids=decoder_inputs["input_ids"].to(self._device),
+            chosen_decoder_attention_mask=decoder_inputs["attention_mask"].to(self._device),
+        )
+        print(outputs["chosen_scores"][0].item())
+        print("############################")
+        return outputs["chosen_scores"][0].item()
 
 
 if __name__ == "__main__":

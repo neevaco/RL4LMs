@@ -582,6 +582,25 @@ class DailyDialog(TextGenPool):
         return dp_instance
 
 
+class EOAPreferences(TextGenPool):
+    @classmethod
+    def prepare(cls, fname_template: str, split: str):
+        fname = fname_template % split
+        df = pandas.read_csv(fname)
+        samples = []
+        for i, row in df.iterrows():
+            if i > 10:
+                break
+            sample = Sample(
+                id=f"{split}-{i}_" + row["event_id"],
+                prompt_or_input_text=row["text"],
+                references=[row["generation"]]
+            )
+            samples.append(sample)
+        pool_instance = cls(samples)
+        return pool_instance
+
+
 if __name__ == "__main__":
     from transformers import AutoTokenizer
     import numpy as np

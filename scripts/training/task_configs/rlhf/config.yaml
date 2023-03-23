@@ -1,0 +1,67 @@
+tokenizer:
+  model_name: t5-base
+  padding_side: left
+  truncation_side: left
+  pad_token_as_eos_token: False
+
+reward_fn:
+  id: eoa_reward_function
+  args:
+    model_name: "/root/.neeva/data/3b_checkpoints/checkpoint-1900/pytorch_model.bin"
+    base_name: "google/flan-t5-xl"
+
+datapool:
+  id: eoa_preferences
+  args:
+    fname_template: "/root/.neeva/data/data/gpt3-11b-outputs_%s.csv"
+    device: "cuda:7"
+
+env:
+  n_envs: 10
+  args:
+    max_prompt_length: 1024
+    max_episode_length: 512
+    terminate_on_eos: True
+    prompt_truncation_side: "right"
+    context_start_token: 0
+
+alg:
+  id: ppo
+  args: 
+    n_steps: 512
+    batch_size: 2
+    verbose: 1
+    learning_rate: 0.000002
+    n_epochs: 5
+    ent_coef: 0.0
+  kl_div:
+    coeff: 0.01
+    target_kl: 0.2
+  policy:
+    id: seq2seq_lm_actor_critic_policy
+    args:
+      model_name: "/root/.neeva/data/models/3b-18909"
+      apply_model_parallel: False
+      prompt_truncation_side: "right"
+      generation_kwargs:
+        do_sample: True
+        temperature: 1.0
+        min_length: 0
+        max_new_tokens: 512
+
+train_evaluation:
+  eval_batch_size: 16
+  n_iters: 50
+  eval_every: 10
+  save_every: 1
+  metrics:
+    - id: rouge
+    - id: bert_score
+      args:
+        language: en
+  generation_kwargs:
+    do_sample: True
+    top_k: 0
+    temperature: 0.7
+    min_length: 50
+    max_new_tokens: 100

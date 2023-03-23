@@ -380,10 +380,10 @@ class Seq2SeqLMActorCriticPolicy(LMActorCriticPolicy):
                 self._value_model.parallelize()
                 self._value_head = self._value_head.to(self.device)
             else: # else defaults to data parallel
-                self._policy_model = torch.nn.DataParallel(self._policy_model)
-                self._ref_model = torch.nn.DataParallel(self._ref_model)
-                self._value_model = torch.nn.DataParallel(self._value_model)
-                self._value_head = torch.nn.DataParallel(self._value_head.to(self.device))
+                self._policy_model = torch.nn.DataParallel(self._policy_model, device_ids=[0,1,2,3,4,5,6])
+                self._ref_model = torch.nn.DataParallel(self._ref_model, device_ids=[0,1,2,3,4,5,6])
+                self._value_model = torch.nn.DataParallel(self._value_model, device_ids=[0,1,2,3,4,5,6])
+                self._value_head = torch.nn.DataParallel(self._value_head.to(self.device), device_ids=[0,1,2,3,4,5,6])
 
 
     def forward_policy(self, obs: TensorDict,
