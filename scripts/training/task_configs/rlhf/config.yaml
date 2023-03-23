@@ -9,12 +9,12 @@ reward_fn:
   args:
     model_name: "/root/.neeva/data/3b_checkpoints/checkpoint-1900/pytorch_model.bin"
     base_name: "google/flan-t5-xl"
+    device: "cuda:7"
 
 datapool:
   id: eoa_preferences
   args:
-    fname_template: "/root/.neeva/data/data/gpt3-11b-outputs_%s.csv"
-    device: "cuda:7"
+    fname_template: "/root/.neeva/data/data/gpt3-11b-outputs/%s.csv"
 
 env:
   n_envs: 10
