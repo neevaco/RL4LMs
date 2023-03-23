@@ -645,12 +645,6 @@ class EOARewardFunction(RewardFunction):
             return_tensors="pt"
         )
 
-        print("############################")
-        print(encoder_inputs)
-        print("---------------------")
-        print(decoder_inputs)
-        print("---------------------")
-
         # chosen_scores: (1,)
         outputs = self._model(
             input_ids=encoder_inputs["input_ids"].to(self._device),
@@ -659,7 +653,6 @@ class EOARewardFunction(RewardFunction):
             chosen_decoder_attention_mask=decoder_inputs["attention_mask"].to(self._device),
         )
         print(outputs["chosen_scores"][0].item())
-        print("############################")
         return outputs["chosen_scores"][0].item()
 
 
