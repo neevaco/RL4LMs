@@ -655,6 +655,57 @@ class EOARewardFunction(RewardFunction):
         print(outputs["chosen_scores"][0].item())
         return outputs["chosen_scores"][0].item()
 
+class BatchedEOARewardFunction(BatchedRewardFunction):
+    def __init__(self, model_name: str, base_name: str, device: str) -> None:
+        super().__init__()
+        self._device = device
+        self._model = load_t5_reward_model(model_name, base_name).to(self._device)
+        self._model.model.eval()
+        self._tokenizer = AutoTokenizer.from_pretrained(base_name)
+        print("########################")
+        print("loading batched reward model...")
+        print("########################")
+
+    def __call__(
+        self,
+        prompt_texts: List[str],
+        gen_texts: List[str],
+        ref_texts: List[List[str]],
+        dones: List[bool],
+        meta_info: Dict[str, Any] = None,
+    ) -> List[float]:
+        not_done_indices = [i for (i,d) in enumerate(dones) if not d]
+        not_done_prompts = [prompt_texts[i] for i in not_done_indices]
+        not_done_gens = [gen_texts[i] for i in not_done_indices]
+
+        encoder_inputs = self._tokenizer(
+            not_done_prompts,
+            padding="longest",
+            truncation=True,
+            return_tensors="pt"
+        )
+
+        decoder_inputs = self._tokenizer(
+            not_done_gens,
+            padding="longest",
+            truncation=True,
+            return_tensors="pt"
+        )
+
+        with torch.no_grad():
+            outputs = self._model(
+                input_ids=encoder_inputs["input_ids"].to(self._device),
+                attention_mask=encoder_inputs["attention_mask"].to(self._device),
+                chosen_decoder_input_ids=decoder_inputs["input_ids"].to(self._device),
+                chosen_decoder_attention_mask=decoder_inputs["attention_mask"].to(self._device),
+            )
+        
+        output_scores = outputs.tolist()
+        scores = [-float('inf')]*len(dones)
+        for i,s in zip(not_done_indices, output_scores):
+            scores[i] = s
+        print(scores)
+        return scores
 
 if __name__ == "__main__":
     predictions = "hello there general kenobi"
